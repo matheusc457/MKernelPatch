@@ -709,8 +709,9 @@ static int correct_addresses_or_offsets_by_vectors(kallsym_t *info, char *img, i
         if (info->kernel_base) {
             base_cand[base_cand_num++] = info->kernel_base;
         }
-        if (info->kernel_base != ELF64_KERNEL_MIN_VA) {
-            base_cand[base_cand_num++] = ELF64_KERNEL_MIN_VA;
+        uint64_t min_va = (info->asm_PTR_size == 4) ? ELF32_KERNEL_MIN_VA : ELF64_KERNEL_MIN_VA;
+        if (info->kernel_base != min_va) {
+            base_cand[base_cand_num++] = min_va;
         }
     }
 
@@ -840,6 +841,19 @@ static int correct_addresses_or_offsets(kallsym_t *info, char *img, int32_t imgl
         tools_logw("no linux_banner, CONFIG_KALLSYMS_ALL=n\n");
     }
     if (rc) rc = correct_addresses_or_offsets_by_vectors(info, img, imglen);
+    if (rc) {
+        tools_logw("proceeding with initial support (CONFIG_KALLSYMS_ALL=n)\n");
+        /* For ARMv7: use first address in kallsyms table as kernel_base */
+        if (info->asm_PTR_size == 4 && info->_approx_addresses_or_offsets_offset) {
+            int32_t es = get_addresses_elem_size(info);
+            uint64_t first_addr = uint_unpack(img + info->_approx_addresses_or_offsets_offset, es, info->is_be);
+            /* Round down to 1MB boundary */
+            info->kernel_base = first_addr & 0xFF800000;
+            info->kallsyms_addresses_offset = info->_approx_addresses_or_offsets_offset;
+            tools_logi("ARMv7 kernel_base estimate: 0x%llx\n", info->kernel_base);
+        }
+        rc = 0; /* initial support */
+    }
     return rc;
 }
 
@@ -920,6 +934,7 @@ int analyze_kallsym_info(kallsym_t *info, char *img, int32_t imglen, enum arch_t
     }
 
     // 3rd
+    if (info->asm_PTR_size == 4) goto out; /* ARMv7: skip ARM64 fallback */
     if (info->kernel_base != ELF64_KERNEL_MIN_VA) {
         info->kernel_base = ELF64_KERNEL_MIN_VA;
         memcpy(copied_img, img, imglen);
@@ -1005,7 +1020,8 @@ int dump_all_symbols(kallsym_t *info, char *img)
         memset(symbol, 0, sizeof(symbol));
         decompress_symbol_name(info, img, &pos, &type, symbol);
         int32_t offset = get_symbol_index_offset(info, img, i);
-        fprintf(stdout, "0x%08x %c %s\n", offset, type, symbol);
+        uint64_t vaddr = (uint64_t)(uint32_t)offset + info->kernel_base;
+        fprintf(stdout, "0x%08llx %c %s\n", vaddr, type, symbol);
     }
     return 0;
 }

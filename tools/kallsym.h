@@ -63,6 +63,8 @@ enum current_type
 };
 
 #define ELF64_KERNEL_MIN_VA 0xffffff8008080000
+#define ELF32_KERNEL_MIN_VA 0x80000000
+#define ELF32_KERNEL_MAX_VA 0xffffffff
 #define ELF64_KERNEL_MAX_VA 0xffffffffffffffff
 
 typedef struct
