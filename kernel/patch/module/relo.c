@@ -1,3 +1,4 @@
+#ifdef __aarch64__
 #include <linux/printk.h>
 #include <linux/elf.h>
 #include <uapi/linux/elf.h>
@@ -326,3 +327,10 @@ overflow:
     pr_err("overflow in relocation type %d val %llx\n", (int)ELF64_R_TYPE(rel[i].r_info), val);
     return -ENOEXEC;
 }
+#else
+/* ARMv7 relocations - TODO */
+#include <linux/err.h>
+#include <uapi/linux/elf.h>
+int apply_relocate_add(Elf32_Shdr *sechdrs, const char *strtab, unsigned int symindex, unsigned int relsec, void *me) { return 0; }
+int apply_relocate(Elf32_Shdr *sechdrs, const char *strtab, unsigned int symindex, unsigned int relsec, void *me) { return 0; }
+#endif

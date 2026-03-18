@@ -50,20 +50,34 @@ static inline uint64_t phys_to_lm(map_data_t *data, uint64_t phys)
 
 static void flush_tlb_all()
 {
+#ifdef __aarch64__
     asm volatile("dsb ishst" : : : "memory");
     asm volatile("tlbi vmalle1is\n"
                  "dsb ish\n"
                  "tlbi vmalle1is\n");
     asm volatile("dsb ish" : : : "memory");
     asm volatile("isb" : : : "memory");
+#else
+    asm volatile("dsb" : : : "memory");
+    asm volatile("mcr p15, 0, %0, c8, c7, 0" : : "r"(0) : "memory"); // TLBIALL
+    asm volatile("dsb" : : : "memory");
+    asm volatile("isb" : : : "memory");
+#endif
 }
 
 static void flush_icache_all(void)
 {
+#ifdef __aarch64__
     asm volatile("dsb ish" : : : "memory");
     asm volatile("ic ialluis");
     asm volatile("dsb ish" : : : "memory");
     asm volatile("isb" : : : "memory");
+#else
+    asm volatile("dsb" : : : "memory");
+    asm volatile("mcr p15, 0, %0, c7, c5, 0" : : "r"(0) : "memory"); // ICIALLU
+    asm volatile("dsb" : : : "memory");
+    asm volatile("isb" : : : "memory");
+#endif
 }
 
 static __noinline void mem_proc(map_data_t *data)
@@ -84,6 +98,7 @@ static __noinline void mem_proc(map_data_t *data)
     data->printk_relo += kernel_va;
 #endif
 
+#ifdef __aarch64__
     // pgtable
     uint64_t tcr_el1;
     asm volatile("mrs %0, tcr_el1" : "=r"(tcr_el1));
@@ -105,9 +120,11 @@ static __noinline void mem_proc(map_data_t *data)
     uint64_t detect_virt = (uint64_t)((memblock_virt_alloc_try_nid_f)data->map_symbol.memblock_virt_alloc_relo)(
         0, 0x10, detect_phys, detect_phys, NUMA_NO_NODE);
     data->linear_voffset = detect_virt - detect_phys;
+#endif
 }
 
 // todo: 52-bits pa
+#ifdef __aarch64__
 static uint64_t __noinline get_or_create_pte(map_data_t *data, uint64_t va, uint64_t pa, uint64_t attr_indx)
 {
     memblock_phys_alloc_try_nid_f memblock_phys_alloc_try_nid =
@@ -169,6 +186,7 @@ static uint64_t __noinline get_or_create_pte(map_data_t *data, uint64_t va, uint
     }
     return pxd_entry_va;
 }
+#endif
 
 // todo: bti
 void __noinline _paging_init()
@@ -209,6 +227,7 @@ void __noinline _paging_init()
     ((paging_init_f)(paging_init_va))();
     // can't write data below
 
+#ifdef __aarch64__
     // AttrIndx[2:0] encoding
     uint64_t ktext_pte = get_or_create_pte(data, data->paging_init_relo, 0, 0);
     uint64_t attrs = *(uint64_t *)ktext_pte;
@@ -250,4 +269,5 @@ void __noinline _paging_init()
 
     // start
     ((start_f)start_va)(data->kimage_voffset, data->linear_voffset);
+#endif
 }

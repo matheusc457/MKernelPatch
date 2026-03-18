@@ -64,6 +64,7 @@
 #define dmb(opt) asm volatile("dmb " #opt : : : "memory")
 #define dsb(opt) asm volatile("dsb " #opt : : : "memory")
 
+#ifdef __aarch64__
 #define tlbi_0(op)       \
     asm("tlbi " #op "\n" \
         "dsb ish\n"      \
@@ -75,6 +76,18 @@
         "tlbi " #op ", %0\n" \
         :                    \
         : "r"(arg))
+#else
+#define tlbi_0(op) \
+    asm volatile("dsb" : : : "memory"); \
+    asm volatile("mcr p15, 0, %0, c8, c7, 0" : : "r"(0) : "memory"); \
+    asm volatile("dsb" : : : "memory")
+
+#define tlbi_1(op, arg) do { \
+    asm volatile("dsb" : : : "memory"); \
+    asm volatile("mcr p15, 0, %0, c8, c7, 1" : : "r"((uint32_t)(arg)) : "memory"); \
+    asm volatile("dsb" : : : "memory"); \
+} while(0)
+#endif
 
 static inline void local_flush_tlb_all(void)
 {

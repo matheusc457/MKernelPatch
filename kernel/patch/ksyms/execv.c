@@ -35,6 +35,7 @@ static void before_execve(hook_fargs3_t *args, void *udata)
     uint64_t arg2 = syscall_argn(args, 2);
     uint64_t nr = (uint64_t)udata;
 
+#ifdef __aarch64__
     unsigned long stack = (unsigned long)get_stack(current);
     uintptr_t addr = (uintptr_t)(thread_size + stack);
 
@@ -52,6 +53,7 @@ static void before_execve(hook_fargs3_t *args, void *udata)
         }
     }
     log_boot("    pt_regs offset: %x\n", pt_regs_offset);
+#endif
 }
 
 static void after_execv(hook_fargs5_t *args, void *udata)

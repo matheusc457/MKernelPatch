@@ -97,10 +97,16 @@ static int hotpatch_cb(void *arg)
 
 static inline int is_interrupt_masked()
 {
+#ifdef __aarch64__
     unsigned long daif;
     asm volatile("mrs %0, daif" : "=r"(daif));
     // https://developer.arm.com/documentation/ddi0601/latest/AArch64-Registers/DAIF--Interrupt-Mask-Bits
     return daif & 0xC0;
+#else
+    unsigned long cpsr;
+    asm volatile("mrs %0, cpsr" : "=r"(cpsr));
+    return cpsr & 0xC0;
+#endif
 }
 
 int hotpatch(void *addrs[], uint32_t values[], int cnt)

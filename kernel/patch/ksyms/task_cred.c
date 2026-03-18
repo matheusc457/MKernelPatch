@@ -463,6 +463,7 @@ int resolve_task_offset()
 int resolve_current()
 {
     log_boot("current: \n");
+#ifdef __aarch64__
     uint64_t sp_el0, sp;
     asm volatile("mrs %0, sp_el0" : "=r"(sp_el0));
     asm volatile("mov %0, sp" : "=r"(sp));
@@ -508,7 +509,12 @@ int resolve_current()
         log_boot("    sp_el0: useless\n");
     }
 
+#endif
     // THREAD_SIZE and end_of_stack and CONFIG_THREAD_INFO_IN_TASK
+#ifndef __aarch64__
+    uint64_t sp;
+    asm volatile("mov %0, sp" : "=r"(sp));
+#endif
     // don't worry, we use little stack until here
     int thread_shift_cand[] = { 14, 15, 16 };
     for (int i = 0; i < sizeof(thread_shift_cand) / sizeof(thread_shift_cand[0]); i++) {

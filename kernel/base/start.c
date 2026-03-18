@@ -104,9 +104,13 @@ static int boot_log_offset = 0;
 
 static inline bool hw_dirty()
 {
+#ifdef __aarch64__
     uint64_t tcr_el1;
     asm volatile("mrs %0, tcr_el1" : "=r"(tcr_el1));
     return tcr_el1 & 0x10000000000;
+#else
+    return false;
+#endif
 }
 
 const char *get_boot_log()
@@ -359,6 +363,7 @@ static void log_regs()
     // log_reg(APIBKey_EL1); //      | R/W [1] | Pointer Authentication Key B for Instructions (Hi/Lo pair)
     // log_reg(CTR_EL0); //          | R   [5] | Cache Type Register
     // log_reg(HCR_EL2); //          | R   [2] | Hypervisor Configuration Register
+#ifdef __aarch64__
     log_reg(ID_AA64AFR0_EL1); //  | R       | AArch64 Auxiliary Feature Register 0
     log_reg(ID_AA64AFR1_EL1); //  | R       | AArch64 Auxiliary Feature Register 1
     log_reg(ID_AA64DFR0_EL1); //  | R       | AArch64 Debug Feature Register 0
@@ -398,6 +403,7 @@ static void log_regs()
     // log_reg(TRCDEVARCH); //       | R       | Trace Device Architecture Register
     log_reg(TTBR0_EL1); //        | R       | Translation Table Base Register 0 (EL1)
     log_reg(TTBR1_EL1); //        | R       | Translation Table Base Register 1 (EL1)
+#endif
     // log_reg(PMMIR_EL1); //        | R       | Performance Monitors Machine Identification Register
     // log_reg(PMSIDR_EL1); //       | R   [4] | Sampling Profiling ID Register
 }
@@ -440,6 +446,7 @@ static void start_init(uint64_t kimage_voff, uint64_t linear_voff)
 
     kallsyms_on_each_symbol = (typeof(kallsyms_on_each_symbol))kallsyms_lookup_name("kallsyms_on_each_symbol");
 
+#ifdef __aarch64__
     uint64_t tcr_el1;
     asm volatile("mrs %0, tcr_el1" : "=r"(tcr_el1));
     uint64_t t1sz = bits(tcr_el1, 21, 16);
@@ -462,6 +469,7 @@ static void start_init(uint64_t kimage_voff, uint64_t linear_voff)
     uint64_t page_size_mask = ~(page_size - 1);
     pgd_pa = baddr & page_size_mask;
     pgd_va = phys_to_virt(pgd_pa);
+#endif
 }
 
 void symbol_init();

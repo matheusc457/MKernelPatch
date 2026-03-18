@@ -12,10 +12,17 @@ static inline void local_flush_icache_all(void)
 
 static inline void flush_icache_all(void)
 {
+#ifdef __aarch64__
     asm volatile("dsb ish" : : : "memory");
     asm volatile("ic ialluis");
     asm volatile("dsb ish" : : : "memory");
     asm volatile("isb" : : : "memory");
+#else
+    asm volatile("dsb" : : : "memory");
+    asm volatile("mcr p15, 0, %0, c7, c5, 0" : : "r"(0) : "memory");
+    asm volatile("dsb" : : : "memory");
+    asm volatile("isb" : : : "memory");
+#endif
 }
 
 /*

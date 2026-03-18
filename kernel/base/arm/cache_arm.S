@@ -30,6 +30,7 @@
 .syntax unified
 
 .align 2
+.globl memcpy8
 .type memcpy8, %function
 memcpy8:
     cmp r2, #0
@@ -43,6 +44,7 @@ memcpy8:
     bx lr
 
 .align 2
+.globl rmemcpy32
 .type rmemcpy32, %function
 rmemcpy32:
     subs r2, r2, #4
@@ -197,3 +199,52 @@ ENTRY(__dma_unmap_area)
     bne __dma_inv_range
     bx lr
 ENDPROC(__dma_unmap_area)
+
+ENTRY(__dma_inv_range)
+    stmfd sp!, {r4, lr}
+    mrc p15, 0, r4, c0, c0, 1  @ read CTR
+    lsr r4, r4, #16
+    and r4, r4, #0xf
+    mov r2, #4
+    lsl r4, r2, r4              @ actual cache line size
+    sub r2, r4, #1
+    tst r1, r2
+    bic r1, r1, r2
+    beq 1f
+    mcr p15, 0, r1, c7, c14, 1 @ clean & invalidate D line
+1:  tst r0, r2
+    bic r0, r0, r2
+    beq 2f
+    mcr p15, 0, r0, c7, c14, 1 @ clean & invalidate D line
+    b 3f
+2:  mcr p15, 0, r0, c7, c6, 1  @ invalidate D line
+3:  add r0, r0, r4
+    cmp r0, r1
+    blo 2b
+    dsb
+    ldmfd sp!, {r4, lr}
+    bx lr
+ENDPROC(__dma_inv_range)
+
+ENTRY(__dma_clean_range)
+    stmfd sp!, {r4, lr}
+    mrc p15, 0, r4, c0, c0, 1  @ read CTR
+    lsr r4, r4, #16
+    and r4, r4, #0xf
+    mov r2, #4
+    lsl r4, r2, r4
+    sub r2, r4, #1
+    bic r0, r0, r2
+1:  mcr p15, 0, r0, c7, c11, 1 @ clean D line to PoU
+    add r0, r0, r4
+    cmp r0, r1
+    blo 1b
+    dsb
+    ldmfd sp!, {r4, lr}
+    bx lr
+ENDPROC(__dma_clean_range)
+
+.globl memcpy
+.type memcpy, %function
+memcpy:
+    b memcpy8
