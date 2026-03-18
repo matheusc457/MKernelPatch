@@ -58,6 +58,20 @@ int32_t get_kernel_info(kernel_info_t *kinfo, const char *img, int32_t imglen)
 {
     kinfo->is_be = 0;
 
+    /* Check for ARMv7 raw kernel (decompressed) */
+    uint32_t first_insn = *(uint32_t *)img;
+    if ((first_insn & 0xFF000000) != 0xFF000000 && (first_insn & 0xFFFF0000) != 0xE59F0000) {
+        /* ARMv7 kernel - fill basic info */
+        kinfo->is_arm32 = 1;
+        kinfo->load_offset = 0x8000; /* ARM default load offset */
+        kinfo->kernel_size = imglen;
+        kinfo->is_be = 0;
+        kinfo->uefi = 0;
+        kinfo->b_stext_insn_offset = 0;
+        kinfo->primary_entry_offset = 0;
+        return 0;
+    }
+
     arm64_hdr_t *khdr = (arm64_hdr_t *)img;
     if (strncmp(khdr->magic, KERNEL_MAGIC, strlen(KERNEL_MAGIC))) {
         tools_loge_exit("kernel image magic error: %s\n", khdr->magic);

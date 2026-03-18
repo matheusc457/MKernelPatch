@@ -13,6 +13,7 @@
 typedef struct
 {
     int8_t is_be; // 0: little, 1: big
+    int8_t is_arm32; // 1: ARMv7 kernel
     int8_t uefi; //
     int32_t load_offset;
     int32_t kernel_size;
