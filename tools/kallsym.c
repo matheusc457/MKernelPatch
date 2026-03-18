@@ -368,7 +368,7 @@ static int find_approx_addresses(kallsym_t *info, char *img, int32_t imglen)
         uint64_t address = uint_unpack(img + cand, elem_size, info->is_be);
         if (!sym_num) { // first address
             if (address & 0xff) continue;
-            if (elem_size == 4 && (address & 0xff800000) != 0xff800000) continue;
+            if (elem_size == 4 && (address & 0x80000000) != 0x80000000) continue;
             if (elem_size == 8 && (address & 0xffff000000000000) != 0xffff000000000000) continue;
             prev_offset = address;
             sym_num++;

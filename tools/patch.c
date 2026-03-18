@@ -424,7 +424,9 @@ int patch_update_img(const char *kimg_path, const char *kpimg_path, const char *
 
     if (kernel_if_need_patch(&kallsym, kallsym_kimg ,pimg.ori_kimg_len))disable_pi_map(kernel_file.kimg, kernel_file.kimg_len);
     
-    if (analyze_kallsym_info(&kallsym, kallsym_kimg, pimg.ori_kimg_len, ARM64, 1)) {
+    int is_64bit = 1; enum arch_type karch = ARM64;
+    { uint32_t fi = *(uint32_t *)kallsym_kimg; if ((fi & 0xFF000000) != 0xFF000000) { is_64bit = 0; karch = ARM_LE; } }
+    if (analyze_kallsym_info(&kallsym, kallsym_kimg, pimg.ori_kimg_len, karch, is_64bit)) {
         tools_loge_exit("analyze_kallsym_info error\n");
     }
 
@@ -749,7 +751,9 @@ int dump_kallsym(const char *kimg_path)
     read_kernel_file(kimg_path, &kernel_file);
 
     kallsym_t kallsym;
-    if (analyze_kallsym_info(&kallsym, kernel_file.kimg, kernel_file.kimg_len, ARM64, 1)) {
+    int is_64b = 1; enum arch_type ka = ARM64;
+    { uint32_t fi2 = *(uint32_t *)kernel_file.kimg; if ((fi2 & 0xFF000000) != 0xFF000000) { is_64b = 0; ka = ARM_LE; } }
+    if (analyze_kallsym_info(&kallsym, kernel_file.kimg, kernel_file.kimg_len, ka, is_64b)) {
         fprintf(stdout, "analyze_kallsym_info error\n");
         return -1;
     }
