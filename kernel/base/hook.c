@@ -4,6 +4,14 @@
  */
 
 #include <hook.h>
+
+#ifndef __aarch64__
+/* ARMv7 implementations in hook_arm.c */
+extern uint64_t branch_func_addr(uint64_t addr);
+extern int32_t branch_from_to(uint32_t *tramp_buf, uint64_t src_addr, uint64_t dst_addr);
+extern hook_err_t hook_prepare(hook_t *hook);
+extern hook_err_t hook_chain_prepare(uint32_t *transit, int32_t argno);
+#endif
 #include <io.h>
 #include <symbol.h>
 #include <pgtable.h>
@@ -126,6 +134,7 @@ static uint64_t branch_func_addr_once(uint64_t addr)
     return ret;
 }
 
+#ifdef __aarch64__
 uint64_t branch_func_addr(uint64_t addr)
 {
     uint64_t ret;
@@ -136,6 +145,7 @@ uint64_t branch_func_addr(uint64_t addr)
     }
     return ret;
 }
+#endif /* __aarch64__ */
 
 #endif
 
@@ -295,6 +305,7 @@ static uint32_t can_b_rel(uint64_t src_addr, uint64_t dst_addr)
            ((src_addr >= dst_addr) & (src_addr - dst_addr <= B_REL_RANGE));
 }
 
+#ifdef __aarch64__
 int32_t branch_relative(uint32_t *buf, uint64_t src_addr, uint64_t dst_addr)
 {
     if (can_b_rel(src_addr, dst_addr)) {
@@ -304,8 +315,10 @@ int32_t branch_relative(uint32_t *buf, uint64_t src_addr, uint64_t dst_addr)
     }
     return 0;
 }
+#endif /* __aarch64__ */
 KP_EXPORT_SYMBOL(branch_relative);
 
+#ifdef __aarch64__
 int32_t branch_absolute(uint32_t *buf, uint64_t addr)
 {
     buf[0] = 0x58000051; // LDR X17, #8
@@ -314,8 +327,10 @@ int32_t branch_absolute(uint32_t *buf, uint64_t addr)
     buf[3] = addr >> 32u;
     return 4;
 }
+#endif /* __aarch64__ */
 KP_EXPORT_SYMBOL(branch_absolute);
 
+#ifdef __aarch64__
 int32_t ret_absolute(uint32_t *buf, uint64_t addr)
 {
     buf[0] = 0x58000051; // LDR X17, #8
@@ -324,8 +339,10 @@ int32_t ret_absolute(uint32_t *buf, uint64_t addr)
     buf[3] = addr >> 32u;
     return 4;
 }
+#endif /* __aarch64__ */
 KP_EXPORT_SYMBOL(ret_absolute);
 
+#ifdef __aarch64__
 int32_t branch_from_to(uint32_t *tramp_buf, uint64_t src_addr, uint64_t dst_addr)
 {
 #if 0
@@ -339,10 +356,12 @@ int32_t branch_from_to(uint32_t *tramp_buf, uint64_t src_addr, uint64_t dst_addr
 #endif
 #endif
 }
+#endif /* __aarch64__ */
 
 // transit0
 typedef uint64_t (*transit0_func_t)();
 
+#ifdef __aarch64__
 uint64_t __attribute__((section(".transit0.text"))) __attribute__((__noinline__)) _transit0()
 {
     uint64_t this_va;
@@ -372,7 +391,9 @@ uint64_t __attribute__((section(".transit0.text"))) __attribute__((__noinline__)
     return fargs.ret;
 }
 extern void _transit0_end();
+#endif /* __aarch64__ */
 
+#ifdef __aarch64__
 // transit4
 typedef uint64_t (*transit4_func_t)(uint64_t, uint64_t, uint64_t, uint64_t);
 
@@ -411,7 +432,9 @@ _transit4(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3)
 }
 
 extern void _transit4_end();
+#endif /* __aarch64__ */
 
+#ifdef __aarch64__
 // transit8:
 typedef uint64_t (*transit8_func_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t);
 
@@ -456,7 +479,9 @@ _transit8(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t a
 }
 
 extern void _transit8_end();
+#endif /* __aarch64__ */
 
+#ifdef __aarch64__
 // transit12:
 typedef uint64_t (*transit12_func_t)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t,
                                      uint64_t, uint64_t, uint64_t, uint64_t);
@@ -506,6 +531,7 @@ _transit12(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t 
 }
 
 extern void _transit12_end();
+#endif /* __aarch64__ */
 
 static __noinline hook_err_t relocate_inst(hook_t *hook, uint64_t inst_addr, uint32_t inst)
 {
@@ -559,6 +585,7 @@ static __noinline hook_err_t relocate_inst(hook_t *hook, uint64_t inst_addr, uin
     return rc;
 }
 
+#ifdef __aarch64__
 hook_err_t hook_prepare(hook_t *hook)
 {
     if (is_bad_address((void *)hook->func_addr)) return -HOOK_BAD_ADDRESS;
@@ -600,6 +627,7 @@ hook_err_t hook_prepare(hook_t *hook)
     hook->relo_insts_num += branch_from_to(buf, back_src_addr, back_dst_addr);
     return HOOK_NO_ERR;
 }
+#endif /* __aarch64__ */
 KP_EXPORT_SYMBOL(hook_prepare);
 
 void hook_install(hook_t *hook)
@@ -661,6 +689,7 @@ void unhook(void *func)
 }
 KP_EXPORT_SYMBOL(unhook);
 
+#ifdef __aarch64__
 static hook_err_t hook_chain_prepare(uint32_t *transit, int32_t argno)
 {
     uint64_t transit_start, transit_end;
@@ -700,6 +729,7 @@ static hook_err_t hook_chain_prepare(uint32_t *transit, int32_t argno)
     }
     return HOOK_NO_ERR;
 }
+#endif /* __aarch64__ */
 
 hook_err_t hook_chain_add(hook_chain_t *chain, void *before, void *after, void *udata)
 {

@@ -44,6 +44,13 @@ static void modify_entry_kernel(uintptr_t va, uintptr_t *entry, uintptr_t value)
 int hotpatch_nosync(void *addr, uint32_t value)
 {
     uintptr_t tp = (uintptr_t)addr;
+#ifndef __aarch64__
+    /* ARMv7: write directly with cache flush */
+    if (tp & 0x3) return -EINVAL;
+    *(uint32_t *)tp = value;
+    flush_icache_all();
+    return 0;
+#endif
     if (tp & 0x3) return -EINVAL;
     if (kfunc(aarch64_insn_patch_text_nosync) && alias_pte) {
         // todo: fixmap

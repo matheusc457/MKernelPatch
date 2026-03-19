@@ -18,7 +18,7 @@ uint64_t __attribute__((section(".fp.transit0.text"))) __attribute__((__noinline
     uint64_t this_va;
     asm volatile("adr %0, ." : "=r"(this_va));
     uint32_t *vptr = (uint32_t *)this_va;
-    while (*--vptr != ARM64_NOP) {
+    while (*--vptr != (sizeof(uintptr_t) == 4 ? 0xE320F000u : ARM64_NOP)) {
     };
     vptr--;
     fp_hook_chain_t *hook_chain = local_container_of((uint64_t)vptr, fp_hook_chain_t, transit);
@@ -52,7 +52,7 @@ _fp_transit4(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3)
     uint64_t this_va;
     asm volatile("adr %0, ." : "=r"(this_va));
     uint32_t *vptr = (uint32_t *)this_va;
-    while (*--vptr != ARM64_NOP) {
+    while (*--vptr != (sizeof(uintptr_t) == 4 ? 0xE320F000u : ARM64_NOP)) {
     };
     vptr--;
     fp_hook_chain_t *hook_chain = local_container_of((uint64_t)vptr, fp_hook_chain_t, transit);
@@ -92,7 +92,7 @@ _fp_transit8(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_
     uint64_t this_va;
     asm volatile("adr %0, ." : "=r"(this_va));
     uint32_t *vptr = (uint32_t *)this_va;
-    while (*--vptr != ARM64_NOP) {
+    while (*--vptr != (sizeof(uintptr_t) == 4 ? 0xE320F000u : ARM64_NOP)) {
     };
     vptr--;
     fp_hook_chain_t *hook_chain = local_container_of((uint64_t)vptr, fp_hook_chain_t, transit);
@@ -138,7 +138,7 @@ _fp_transit12(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64
     uint64_t this_va;
     asm volatile("adr %0, ." : "=r"(this_va));
     uint32_t *vptr = (uint32_t *)this_va;
-    while (*--vptr != ARM64_NOP) {
+    while (*--vptr != (sizeof(uintptr_t) == 4 ? 0xE320F000u : ARM64_NOP)) {
     };
     vptr--;
     fp_hook_chain_t *hook_chain = local_container_of((uint64_t)vptr, fp_hook_chain_t, transit);
@@ -210,8 +210,13 @@ static hook_err_t hook_chain_prepare(uint32_t *transit, int32_t argno)
     // todo: assert
     if (transit_num >= TRANSIT_INST_NUM) return -HOOK_TRANSIT_NO_MEM;
 
+#ifdef __aarch64__
     transit[0] = ARM64_BTI_JC;
     transit[1] = ARM64_NOP;
+#else
+    transit[0] = 0xE320F000u; /* ARM32_NOP */
+    transit[1] = 0xE320F000u; /* ARM32_NOP */
+#endif
     for (int i = 0; i < transit_num; i++) {
         transit[i + 2] = ((uint32_t *)transit_start)[i];
     }

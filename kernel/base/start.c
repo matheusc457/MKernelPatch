@@ -208,6 +208,7 @@ KP_EXPORT_SYMBOL(pgtable_phys);
 
 static void prot_myself()
 {
+#ifdef __aarch64__
     uint64_t *kpte = pgtable_entry_kernel(kernel_stext_va);
     log_boot("Kernel stext prot: %llx\n", *kpte);
 
@@ -326,9 +327,12 @@ static void prot_myself()
         log_boot("add vmalloc area: %llx, %llx\n", kp_vm.addr, kp_vm.size);
     }
 }
+#endif /* __aarch64__ */
+}
 
 static void restore_map()
 {
+#ifdef __aarch64__
     uint64_t start = kernel_va + start_preset.map_offset;
     uint64_t end = start + start_preset.map_backup_len;
     log_boot("Restore: %llx, %llx\n", start, end);
@@ -345,6 +349,16 @@ static void restore_map()
         flush_tlb_kernel_page(i);
     }
     flush_icache_all();
+#else
+    /* ARMv7: restore map bytes directly, no page table manipulation needed */
+    uint64_t start = kernel_va + start_preset.map_offset;
+    uint64_t end = start + start_preset.map_backup_len;
+    log_boot("Restore: %llx, %llx\n", start, end);
+    for (uint64_t j = start; j < end; j += 4) {
+        *(uint32_t *)j = *(uint32_t *)(start_preset.map_backup + (j - start));
+    }
+    flush_icache_all();
+#endif
 }
 
 #define log_reg(regname)                                                   \

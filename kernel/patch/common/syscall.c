@@ -159,7 +159,11 @@ long raw_syscall0(long nr)
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         return ((warp_raw_syscall_f)addr)(&regs);
     }
     return ((raw_syscall0_f)addr)();
@@ -172,7 +176,11 @@ long raw_syscall1(long nr, long arg0)
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         regs.regs[0] = arg0;
         return ((warp_raw_syscall_f)addr)(&regs);
     }
@@ -186,7 +194,11 @@ long raw_syscall2(long nr, long arg0, long arg1)
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         regs.regs[0] = arg0;
         regs.regs[1] = arg1;
         return ((warp_raw_syscall_f)addr)(&regs);
@@ -201,7 +213,11 @@ long raw_syscall3(long nr, long arg0, long arg1, long arg2)
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         regs.regs[0] = arg0;
         regs.regs[1] = arg1;
         regs.regs[2] = arg2;
@@ -217,7 +233,11 @@ long raw_syscall4(long nr, long arg0, long arg1, long arg2, long arg3)
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         regs.regs[0] = arg0;
         regs.regs[1] = arg1;
         regs.regs[2] = arg2;
@@ -234,7 +254,11 @@ long raw_syscall5(long nr, long arg0, long arg1, long arg2, long arg3, long arg4
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         regs.regs[0] = arg0;
         regs.regs[1] = arg1;
         regs.regs[2] = arg2;
@@ -252,7 +276,11 @@ long raw_syscall6(long nr, long arg0, long arg1, long arg2, long arg3, long arg4
     if (has_syscall_wrapper) {
         struct pt_regs regs;
         regs.syscallno = nr;
-        regs.regs[8] = nr;
+#ifdef __aarch64__
+        regs.regs[8] = nr; /* ARM64: syscall nr in x8 */
+#else
+        regs.regs[7] = nr; /* ARMv7: syscall nr in r7 */
+#endif
         regs.regs[0] = arg0;
         regs.regs[1] = arg1;
         regs.regs[2] = arg2;

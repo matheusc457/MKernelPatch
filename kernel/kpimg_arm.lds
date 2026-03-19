@@ -48,14 +48,12 @@ SECTIONS
         base/start.o(.start.text)
         base/start.o(.text)
         
-        base/hook.o(.transit0.text);
+        base/hook_arm.o(.transit0.text);
         _transit0_end = .;
-        base/hook.o(.transit4.text);
+        base/hook_arm.o(.transit4.text);
         _transit4_end = .;
-        base/hook.o(.transit8.text);
+        base/hook_arm.o(.transit8.text);
         _transit8_end = .;
-        base/hook.o(.transit12.text);
-        _transit12_end = .;
 
         base/fphook.o(.fp.transit0.text);
         _fp_transit0_end = .;
