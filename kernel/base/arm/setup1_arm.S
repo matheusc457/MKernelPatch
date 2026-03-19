@@ -9,7 +9,7 @@
 #include "../start.h"
 
 .text
-.thumb
+.arm
 .syntax unified
 
 @ memcpy8 - already in cache_arm.S
@@ -183,18 +183,15 @@ map_prepare:
     add r8, r6, r4
 
     @ B_REL(paging_init_offset, replace_offset)
-    @ = 0xEA000000 | (((dst - src) >> 2) & 0x00FFFFFF)  @ ARM branch
-    @ In Thumb2: 0xF000B800 pattern
-    sub r7, r7, r6
-    lsr r7, r7, #2
-    movw r6, #0xF000
-    movt r6, #0xF000
-    @ use simple ARM B encoding: 0xEA000000
+    @ r7 = replace_offset (dst), r6 = paging_init_offset (src), r8 = paging_init_pa
+    @ branch_insn = 0xEA000000 | (((dst - src) >> 2) & 0x00FFFFFF)
+    sub r7, r7, r6      @ offset = dst - src
+    lsr r7, r7, #2      @ offset >>= 2
+    and r7, r7, #0x00FFFFFF  @ mask to 24 bits
     movw r6, #0x0000
-    movt r6, #0xEA00
-    and r7, r7, #0x00FFFFFF
-    orr r7, r7, r6
-    str r7, [r8]
+    movt r6, #0xEA00    @ r6 = 0xEA000000 (ARM B instruction)
+    orr r7, r7, r6      @ combine opcode and offset
+    str r7, [r8]        @ write branch instruction to paging_init_pa
 
     @ relocate map
     ldr r2, =_map_end
@@ -210,6 +207,12 @@ map_prepare:
 .align 2
 .type setup, %function
 setup:
+    @ Write to ramoops
+    push {r0, r1}
+    ldr r0, =0x47d6f000
+    mov r1, #0x02
+    str r1, [r0]           @ KP02 - entered setup
+    pop {r0, r1}
     push {r0-r12, lr}
 
     @ _link_base
@@ -250,10 +253,22 @@ setup:
 .global setup_entry
 .type setup_entry, %function
 setup_entry:
+    @ Write to ramoops region - survives reboot
+    ldr r12, =0x47d6f000
+    mov r11, #0x01
+    str r11, [r12]         @ KP01 - entered setup_entry
+
     @ r0 = physical address to the FDT blob
+    @ Calculate physical address of stack using PC-relative addressing
     mov r9, sp
-    ldr r11, =stack
+    adr r10, _setup_entry_base      @ get current physical PC
+    ldr r11, =_setup_entry_base     @ get linked virtual address
+    sub r10, r11, r10               @ r10 = VA - PA = virt offset
+    ldr r11, =stack                 @ virtual address of stack
+    sub r11, r11, r10               @ convert to physical address
     add r11, r11, #STACK_SIZE
     mov sp, r11
     push {r9, r10}
     b setup
+
+_setup_entry_base:

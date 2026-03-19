@@ -120,6 +120,11 @@ static __noinline void mem_proc(map_data_t *data)
     uint64_t detect_virt = (uint64_t)((memblock_virt_alloc_try_nid_f)data->map_symbol.memblock_virt_alloc_relo)(
         0, 0x10, detect_phys, detect_phys, NUMA_NO_NODE);
     data->linear_voffset = detect_virt - detect_phys;
+#else
+    // ARMv7: fixed 4KB pages, 32-bit VA, no KASLR
+    data->va1_bits = 32;
+    data->page_shift = 12;
+    data->linear_voffset = 0;
 #endif
 }
 
@@ -225,6 +230,7 @@ void __noinline _paging_init()
     *(uint32_t *)(paging_init_va) = data->paging_init_backup;
     flush_icache_all();
     ((paging_init_f)(paging_init_va))();
+    *(volatile uint32_t *)0x47d6f000 = 0x03; /* KP03 - paging_init done */
     // can't write data below
 
 #ifdef __aarch64__
@@ -269,5 +275,29 @@ void __noinline _paging_init()
 
     // start
     ((start_f)start_va)(data->kimage_voffset, data->linear_voffset);
+#else
+    // ARMv7: direct physical memory access, no PTE manipulation needed
+    // ARMv7 kernel uses section mappings - memory is directly accessible
+    uint64_t old_start_va = old_start_pa; // identity mapped in ARMv7 boot
+    uint64_t start_va = start_pa;         // identity mapped in ARMv7 boot
+    flush_tlb_all();
+
+    for (uint64_t i = 0; i < all_size; i += 4) {
+        *(uint32_t *)(start_va + i) = 0;
+    }
+    for (uint64_t i = 0; i < data->start_img_size; i += 4) {
+        *(uint32_t *)(start_va + i) = *(uint32_t *)(old_start_va + i);
+    }
+    for (uint64_t i = 0; i < data->extra_size; i += 4) {
+        *(uint32_t *)(start_va + data->start_size + i) = *(uint32_t *)(old_start_va + data->start_img_size + i);
+    }
+
+    flush_icache_all();
+
+    // free old start
+    ((memblock_free_f)data->map_symbol.memblock_free_relo)(old_start_pa, reserve_size);
+
+    // start - ARMv7: kimage_voffset = 0x80000000 (VA-PA offset)
+    ((start_f)start_va)(0x80000000, 0x80000000);
 #endif
 }

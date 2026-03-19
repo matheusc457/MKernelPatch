@@ -67,7 +67,7 @@ int32_t get_kernel_info(kernel_info_t *kinfo, const char *img, int32_t imglen)
         kinfo->kernel_size = imglen;
         kinfo->is_be = 0;
         kinfo->uefi = 0;
-        kinfo->b_stext_insn_offset = 0;
+        kinfo->b_stext_insn_offset = 0x100000; /* _stext offset in ARMv7 kernel */
         kinfo->primary_entry_offset = 0;
         return 0;
     }

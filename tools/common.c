@@ -17,6 +17,21 @@ int can_b_imm(uint64_t from, uint64_t to)
 
 int b(uint32_t *buf, uint64_t from, uint64_t to)
 {
+    /* Check if existing instruction is ARM32 (top byte 0xE?) */
+    uint32_t existing = buf[0];
+    int is_arm32 = (existing & 0xF0000000) == 0xE0000000 || (existing & 0xF0000000) == 0x00000000;
+
+    if (is_arm32) {
+        /* ARMv7 branch: 0xEA000000 | ((offset >> 2) & 0x00FFFFFF) */
+        int64_t offset = (int64_t)to - (int64_t)from;
+        if (offset >= -0x2000000 && offset <= 0x1FFFFFC) {
+            buf[0] = 0xEA000000u | (((uint32_t)(offset >> 2)) & 0x00FFFFFFu);
+            return 4;
+        }
+        return 0;
+    }
+
+    /* ARM64 branch */
     if (can_b_imm(from, to)) {
         buf[0] = 0x14000000u | (((to - from) & 0x0FFFFFFFu) >> 2u);
         return 4;
