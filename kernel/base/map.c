@@ -278,8 +278,9 @@ void __noinline _paging_init()
 #else
     // ARMv7: direct physical memory access, no PTE manipulation needed
     // ARMv7 kernel uses section mappings - memory is directly accessible
-    uint64_t old_start_va = old_start_pa; // identity mapped in ARMv7 boot
-    uint64_t start_va = start_pa;         // identity mapped in ARMv7 boot
+    // ARMv7: after paging_init MMU is active, need virtual addresses
+    uint64_t old_start_va = old_start_pa + 0x80000000;
+    uint64_t start_va = start_pa + 0x80000000;
     flush_tlb_all();
 
     for (uint64_t i = 0; i < all_size; i += 4) {

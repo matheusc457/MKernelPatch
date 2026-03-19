@@ -514,6 +514,9 @@ int resolve_current()
 #ifndef __aarch64__
     uint64_t sp;
     asm volatile("mov %0, sp" : "=r"(sp));
+    /* ARMv7: init_task must be resolved here */
+    init_task = (struct task_struct *)kallsyms_lookup_name("init_task");
+    log_boot("    ARMv7 init_task: %llx\n", init_task);
 #endif
     // don't worry, we use little stack until here
     int thread_shift_cand[] = { 14, 15, 16 };
@@ -523,7 +526,7 @@ int resolve_current()
         // uint64_t sp_high = sp_low + tsz; // user_stack_pointer
         uint64_t psp = sp_low;
         for (; psp < sp_low + THREAD_INFO_MAX_SIZE; psp += sizeof(uint32_t)) {
-            if (*(uint64_t *)psp == STACK_END_MAGIC) {
+            if (*(uint32_t *)psp == (uint32_t)STACK_END_MAGIC) { /* ARMv7: 32-bit magic */
                 if (psp == sp_low) {
                     thread_size = tsz;
                     stack_end_offset = 0;
@@ -551,7 +554,7 @@ int resolve_current()
         uint64_t thread_info_addr = (uint64_t)current_thread_info_sp();
         if (init_task) {
             for (uint64_t ptr = thread_info_addr; ptr < thread_info_addr + stack_end_offset; ptr += sizeof(uint32_t)) {
-                uint64_t pv = *(uint64_t *)ptr;
+                uint64_t pv = *(uintptr_t *)ptr; /* ARMv7: 32-bit pointer */
                 if (pv == (uint64_t)init_task) {
                     task_in_thread_info_offset = ptr - thread_info_addr;
                     break;
@@ -559,7 +562,7 @@ int resolve_current()
             }
         } else { // unlikely
             for (uint64_t ptr = thread_info_addr; ptr < thread_info_addr + stack_end_offset; ptr += sizeof(uint32_t)) {
-                uint64_t pv = *(uint64_t *)ptr;
+                uint64_t pv = *(uintptr_t *)ptr; /* ARMv7: 32-bit pointer */
                 task_struct_offset.comm_offset = find_swapper_comm_offset(pv, TASK_STRUCT_MAX_SIZE);
                 if (task_struct_offset.comm_offset > 0) {
                     init_task = (struct task_struct *)pv;

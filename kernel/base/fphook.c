@@ -221,10 +221,17 @@ static hook_err_t hook_chain_prepare(uint32_t *transit, int32_t argno)
 void fp_hook(uintptr_t fp_addr, void *replace, void **backup)
 {
     *(uintptr_t *)backup = *(uintptr_t *)fp_addr;
+#ifdef __aarch64__
     uintptr_t addrs[2];
     addrs[0] = fp_addr;
     addrs[1] = fp_addr + 4;
     hotpatch((void **)addrs, (uint32_t *)&replace, 2);
+#else
+    /* ARMv7: function pointers are 4 bytes */
+    uintptr_t addrs[1];
+    addrs[0] = fp_addr;
+    hotpatch((void **)addrs, (uint32_t *)&replace, 1);
+#endif
 }
 KP_EXPORT_SYMBOL(fp_hook);
 
