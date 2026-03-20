@@ -213,7 +213,7 @@ static void prot_myself()
     log_boot("Kernel stext prot: %llx\n", *kpte);
 
     _kp_region_start = (uint64_t)_kp_text_start;
-    _kp_region_end = (uint64_t)_kp_end + align_ceil(start_preset.extra_size, page_size) + HOOK_ALLOC_SIZE +
+    _kp_region_end = (uint64_t)_kp_end + align_ceil(sp->extra_size, page_size) + HOOK_ALLOC_SIZE +
                      MEMORY_ROX_SIZE + MEMORY_RW_SIZE;
     log_boot("Region: %llx, %llx\n", _kp_region_start, _kp_region_end);
 
@@ -252,7 +252,7 @@ static void prot_myself()
 
     // extra data
     _kp_extra_start = (uint64_t)_kp_end;
-    _kp_extra_end = _kp_extra_start + start_preset.extra_size;
+    _kp_extra_end = _kp_extra_start + sp->extra_size;
     uint64_t align_extra_end = align_ceil(_kp_extra_end, page_size);
     log_boot("Extra: %llx, %llx\n", _kp_extra_start, _kp_extra_end);
 
@@ -333,8 +333,8 @@ static void prot_myself()
 static void restore_map()
 {
 #ifdef __aarch64__
-    uint64_t start = kernel_va + start_preset.map_offset;
-    uint64_t end = start + start_preset.map_backup_len;
+    uint64_t start = kernel_va + sp->map_offset;
+    uint64_t end = start + sp->map_backup_len;
     log_boot("Restore: %llx, %llx\n", start, end);
 
     for (uint64_t i = start; i < align_ceil(end, page_size); i += page_size) {
@@ -343,7 +343,7 @@ static void restore_map()
         *pte = (orig | PTE_DBM) & ~PTE_RDONLY;
         flush_tlb_kernel_page(i);
         for (uint64_t j = i; j >= start && j < end && j < i + page_size; j += 8) {
-            *(uint64_t *)j = *(uint64_t *)(start_preset.map_backup + (j - start));
+            *(uint64_t *)j = *(uint64_t *)(sp->map_backup + (j - start));
         }
         *pte = orig;
         flush_tlb_kernel_page(i);
@@ -351,11 +351,11 @@ static void restore_map()
     flush_icache_all();
 #else
     /* ARMv7: restore map bytes directly, no page table manipulation needed */
-    uint64_t start = kernel_va + start_preset.map_offset;
-    uint64_t end = start + start_preset.map_backup_len;
+    uint64_t start = kernel_va + sp->map_offset;
+    uint64_t end = start + sp->map_backup_len;
     log_boot("Restore: %llx, %llx\n", start, end);
     for (uint64_t j = start; j < end; j += 4) {
-        *(uint32_t *)j = *(uint32_t *)(start_preset.map_backup + (j - start));
+        *(uint32_t *)j = *(uint32_t *)(sp->map_backup + (j - start));
     }
     flush_icache_all();
 #endif
@@ -427,12 +427,13 @@ static void start_init(uint64_t kimage_voff, uint64_t linear_voff)
     kimage_voffset = kimage_voff;
     linear_voffset = linear_voff;
 
-    kernel_pa = start_preset.kernel_pa;
+    start_preset_t *sp = (start_preset_t *)link2runtime((unsigned long)&start_preset);
+    kernel_pa = sp->kernel_pa;
     kernel_va = kimage_voff + kernel_pa;
-    kernel_size = start_preset.kernel_size;
+    kernel_size = sp->kernel_size;
     runtime_base_addr = (uint64_t)_link_base;
 
-    uint64_t kallsym_addr = kernel_va + start_preset.kallsyms_lookup_name_offset;
+    uint64_t kallsym_addr = kernel_va + sp->kallsyms_lookup_name_offset;
     kallsyms_lookup_name = (typeof(kallsyms_lookup_name))(kallsym_addr);
     kernel_stext_va = kallsyms_lookup_name("_stext");
     printk = (typeof(printk))kallsyms_lookup_name("printk");
@@ -443,9 +444,9 @@ static void start_init(uint64_t kimage_voff, uint64_t linear_voff)
     log_boot(KERNEL_PATCH_BANNER);
 
     endian = *(unsigned char *)&(uint16_t){ 1 } ? little : big;
-    setup_header = &start_preset.header;
-    kver = VERSION(start_preset.kernel_version.major, start_preset.kernel_version.minor,
-                   start_preset.kernel_version.patch);
+    setup_header = (setup_header_t *)link2runtime((unsigned long)&sp->header);
+    kver = VERSION(sp->kernel_version.major, sp->kernel_version.minor,
+                   sp->kernel_version.patch);
     kpver = VERSION(setup_header->kp_version.major, setup_header->kp_version.minor, setup_header->kp_version.patch);
 
     log_boot("Kernel pa: %llx\n", kernel_pa);

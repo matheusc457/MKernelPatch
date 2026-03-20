@@ -16,23 +16,35 @@
 @ rmemcpy32 - already in cache_arm.S
 
 .align 2
+_sp_pc_anchor:
+    .word _sp_pc_anchor
 .type start_prepare, %function
 start_prepare:
     push {r4-r11, lr}
     @ kernel_pa
     mov r4, r0
 
-    @ map_data
+    @ Calculate VA->PA offset (we are running before MMU is active)
+    @ Use PC-relative trick: adr gives physical address, ldr= gives virtual
+    adr r5, _sp_pc_anchor      @ r5 = physical address of anchor
+    ldr r6, =_sp_pc_anchor     @ r6 = virtual address of anchor
+    sub r6, r6, r5             @ r6 = VA - PA = voffset
+
+    @ map_data (convert VA to PA)
     ldr r9, =map_data
+    sub r9, r9, r6
 
-    @ setup_preset
+    @ setup_preset (convert VA to PA)
     ldr r10, =setup_preset
+    sub r10, r10, r6
 
-    @ start_preset
+    @ start_preset (convert VA to PA)
     ldr r11, =start_preset
+    sub r11, r11, r6
 
-    @ header
+    @ header (convert VA to PA)
     ldr r12, =header
+    sub r12, r12, r6
 
     @ start_preset.kernel_version = setup_preset.kernel_version
     ldr r3, [r10, #setup_kernel_version_offset]
@@ -215,11 +227,18 @@ setup:
     pop {r0, r1}
     push {r0-r12, lr}
 
-    @ _link_base
-    ldr r9, =_link_base
+    @ _link_base - use ADR for PC-relative (physical) address
+    adr r9, _setup_link_base_ref
+    ldr r9, [r9]              @ r9 = virtual address of _link_base
+    @ Now calculate the PA->VA offset using current PC
+    adr r12, _setup_pc_ref    @ r12 = current physical PC
+    ldr r11, =_setup_pc_ref   @ r11 = virtual address of same location
+    sub r11, r11, r12         @ r11 = VA - PA = voffset
+    sub r9, r9, r11           @ r9 = physical address of _link_base
 
-    @ setup_preset
+    @ setup_preset - convert VA to PA
     ldr r10, =setup_preset
+    sub r10, r10, r11         @ r10 = physical address of setup_preset
     mov r8, r10
 
     @ kernel_pa = _link_base - setup_preset.setup_offset
@@ -272,3 +291,8 @@ setup_entry:
     b setup
 
 _setup_entry_base:
+.align 2
+_setup_pc_ref:
+    .word _setup_pc_ref
+_setup_link_base_ref:
+    .word _link_base

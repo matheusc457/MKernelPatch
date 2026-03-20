@@ -106,9 +106,10 @@ int on_each_extra_item(int (*callback)(const patch_extra_item_t *extra, const ch
 
 void predata_init()
 {
-    superkey = (char *)start_preset.superkey;
-    root_superkey = (char *)start_preset.root_superkey;
-    char *compile_time = start_preset.header.compile_time;
+    start_preset_t *sp = (start_preset_t *)link2runtime((unsigned long)&start_preset);
+    superkey = (char *)sp->superkey;
+    root_superkey = (char *)sp->root_superkey;
+    char *compile_time = sp->header.compile_time;
 
     // RNG
     _rand_next *= kernel_va;
@@ -134,7 +135,7 @@ void predata_init()
     }
     log_boot("gen rand key: %s\n", superkey);
 
-    patch_config = &start_preset.patch_config;
+    patch_config = &sp->patch_config;
 
     for (uintptr_t addr = (uint64_t)patch_config; addr < (uintptr_t)patch_config + PATCH_CONFIG_LEN;
          addr += sizeof(uintptr_t)) {

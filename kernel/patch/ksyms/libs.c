@@ -279,5 +279,13 @@ void linux_libs_symbol_init(const char *name, unsigned long addr)
     _linux_libs_symbol_init(0, 0, 0, 0);
 #else
     kallsyms_on_each_symbol(_linux_libs_symbol_init, 0);
+
+    /* ARMv7 fallback: use kallsyms_lookup_name for critical functions */
+    if (!kfunc(strncpy_from_user)) {
+        kfunc(strncpy_from_user) = (typeof(kfunc(strncpy_from_user)))kallsyms_lookup_name("strncpy_from_user");
+    }
+    if (!kfunc(strncpy_from_user_nofault)) {
+        kfunc(strncpy_from_user_nofault) = (typeof(kfunc(strncpy_from_user_nofault)))kallsyms_lookup_name("strncpy_from_user_nofault");
+    }
 #endif
 }
